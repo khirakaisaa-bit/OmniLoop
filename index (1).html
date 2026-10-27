@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Omniloop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Young+Serif&display=swap">
+<style>
+/* Layout: school-notebook identity (Seyès ruled paper with a margin line). Top bar with tabs, a demo clock bar, then views. Today = next-step card beside a chat preview; practice happens on a ruled paper card. */
+:root{
+  --bg:#eef2f8; --surface:#fbfcfe; --ink:#14213d; --muted:#55627f; --rule:#dbe4f4; --line:#c9d4ea; --margin:#eab4b6;
+  --accent:#1f46c8; --on-accent:#ffffff;
+  --good:#17794f; --good-bg:#dff3e8; --bad:#b3261e; --bad-bg:#fbe3e1; --warn:#7a4f00; --warn-bg:#fbefd0;
+  --bubble:#d9f2dd; --bubble-ink:#12301b; --chat-bg:#e6ebf5;
+  --st-new:#b9c4dc; --st-learn:#e0a526; --st-fam:#4f77e0; --st-strong:#2a9d6b;
+  --display:'Young Serif', Georgia, 'Times New Roman', serif;
+  --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1324; --surface:#141b2f; --ink:#e7ecf8; --muted:#9ba8c6; --rule:#1f2a47; --line:#2c3960; --margin:#6a3b48;
+    --accent:#8fb0ff; --on-accent:#0d1324;
+    --good:#62d3a2; --good-bg:#12342a; --bad:#ff9a94; --bad-bg:#3c1c1f; --warn:#f0c36a; --warn-bg:#3a2e12;
+    --bubble:#16422f; --bubble-ink:#e3f6e8; --chat-bg:#0f1830;
+    --st-new:#3a4666; --st-learn:#e0b04a; --st-fam:#7398f0; --st-strong:#46c08a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1324; --surface:#141b2f; --ink:#e7ecf8; --muted:#9ba8c6; --rule:#1f2a47; --line:#2c3960; --margin:#6a3b48;
+  --accent:#8fb0ff; --on-accent:#0d1324;
+  --good:#62d3a2; --good-bg:#12342a; --bad:#ff9a94; --bad-bg:#3c1c1f; --warn:#f0c36a; --warn-bg:#3a2e12;
+  --bubble:#16422f; --bubble-ink:#e3f6e8; --chat-bg:#0f1830;
+  --st-new:#3a4666; --st-learn:#e0b04a; --st-fam:#7398f0; --st-strong:#46c08a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--body)}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:20px 56px}
+.muted{color:var(--muted)}
+
+/* header */
+.head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;padding-bottom:14px}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.name{font-family:var(--display);font-size:28px;line-height:1.1}
+.sub{color:var(--muted);font-size:14px}
+.mark circle{fill:none;stroke:var(--accent);stroke-width:3}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
+.tabs button{border:0;background:transparent;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:700;color:var(--muted)}
+.tabs button.on{background:var(--accent);color:var(--on-accent)}
+
+/* demo clock */
+.demo{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:14px;background:var(--surface)}
+.demo .spacer{flex:1 1 auto}
+.demo .hint{color:var(--muted);flex-basis:100%}
+
+/* buttons, pills */
+.btn{font-weight:700;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{padding:5px 11px;font-size:14px}
+.btn.warn{border-color:var(--bad);color:var(--bad);background:transparent}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:700;text-decoration:underline;cursor:pointer;text-align:left}
+.pill{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:99px;background:var(--rule);color:var(--muted);white-space:nowrap}
+.pill.p-prog{background:var(--warn-bg);color:var(--warn)}
+.pill.p-done{background:var(--good-bg);color:var(--good)}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.card h2{font-family:var(--display);font-weight:400;font-size:21px;line-height:1.25;margin-bottom:12px}
+.top{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start;margin-bottom:20px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;align-items:start}
+.coach{display:flex;flex-direction:column;gap:14px;padding:28px}
+.coach h1{font-family:var(--display);font-weight:400;font-size:34px;line-height:1.15;text-wrap:balance}
+.why{color:var(--muted)}
+.why strong{color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center}
+
+/* chat preview */
+.phone{border:1px solid var(--line);border-radius:20px;background:var(--surface);overflow:hidden}
+.ph-head{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-family:var(--display)}
+.ph-head b{display:block;line-height:1.2}
+.ph-head small{color:var(--muted)}
+.ph-body{background:var(--chat-bg);padding:16px;display:flex;flex-direction:column;gap:10px}
+.daychip{align-self:center;font-size:12px;color:var(--muted);background:var(--surface);border-radius:99px;padding:2px 12px}
+.bubble{background:var(--bubble);color:var(--bubble-ink);border-radius:4px 14px 14px 14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;max-width:94%}
+.bubble .linkbtn{color:var(--bubble-ink)}
+.bubble .time{align-self:flex-end;font-size:12px;opacity:.7}
+.note{font-size:14px;color:var(--muted);margin-top:10px}
+
+/* lists inside cards */
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--rule)}
+.lines li:first-child{border-top:0}
+.lines .t{min-width:0}
+.bar{height:8px;background:var(--rule);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.stack{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--rule)}
+.stack i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend b{font-variant-numeric:tabular-nums}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.fc{display:flex;align-items:flex-end;gap:8px;margin-top:6px}
+.fc .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.fc .b{width:100%;background:var(--st-fam);border-radius:4px 4px 0 0;min-height:3px}
+.fc .n{font-size:13px;font-variant-numeric:tabular-nums;font-weight:700}
+.fc .l{font-size:12px;color:var(--muted)}
+.sep{height:1px;background:var(--rule);margin:16px 0}
+
+/* form */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label,.field legend{font-size:14px;font-weight:700}
+.field input[type=text],.field select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:100%}
+.radios{display:flex;gap:8px;flex-wrap:wrap}
+.radios label{font-weight:400;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:15px}
+fieldset{border:0;padding:0;margin:0 0 12px}
+
+/* lessons */
+.lessons{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.lesson{display:flex;flex-direction:column;gap:10px}
+.lesson h3{font-family:var(--display);font-weight:400;font-size:21px;line-height:1.2}
+.lesson .grow{flex:1}
+.back{margin-bottom:14px}
+.wcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:18px 0}
+.wcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.wcard .w{font-family:var(--display);font-size:24px;line-height:1.1}
+.wcard .pos{font-style:italic;color:var(--muted);font-size:14px}
+.wcard .ex{border-left:3px solid var(--margin);padding-left:10px;color:var(--muted)}
+.expect{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:14px}
+.expect h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+
+/* practice (ruled paper) */
+.paper{position:relative;background-color:var(--surface);background-image:linear-gradient(to bottom,transparent 0,transparent 31px,var(--rule) 31px,var(--rule) 32px);background-size:100% 32px;border:1px solid var(--line);border-radius:10px;padding:28px 24px 32px 68px;display:flex;flex-direction:column;gap:18px}
+.paper::before{content:"";position:absolute;left:46px;top:0;bottom:0;width:2px;background:var(--margin)}
+.sess-top{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:center;margin-bottom:14px}
+.qlabel{font-weight:700;color:var(--muted)}
+.target{font-family:var(--display);font-weight:400;font-size:46px;line-height:1.1;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.sentence{font-size:20px;line-height:1.5;background:var(--surface);padding:2px 0}
+.blank{display:inline-block;min-width:80px;border-bottom:2px solid var(--ink);margin-inline:2px}
+.def{font-size:20px;background:var(--surface)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:12px 14px;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;min-width:0}
+.opt:hover{border-color:var(--accent)}
+.opt .k{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--muted)}
+.opt .tag{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+.opt.correct{background:var(--good-bg);border-color:var(--good);color:var(--ink)}
+.opt.correct .tag{color:var(--good)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad)}
+.opt.wrong .tag{color:var(--bad)}
+.opt[disabled]{cursor:default}
+.spell{display:flex;flex-wrap:wrap;gap:10px}
+.spell input{flex:1 1 200px;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:20px}
+.fb{border-radius:8px;padding:12px 14px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:6px}
+.fb.good{background:var(--good-bg);border-color:var(--good)}
+.fb.bad{background:var(--bad-bg);border-color:var(--bad)}
+.fb .head2{font-weight:700}
+.fb.good .head2{color:var(--good)}
+.fb.bad .head2{color:var(--bad)}
+.stats{display:flex;flex-wrap:wrap;gap:12px 32px;margin:6px 0}
+.stats div{display:flex;flex-direction:column}
+.stats b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{color:var(--muted);font-size:14px}
+
+/* words */
+.ladder{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.ladder li{border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:14px;background:var(--bg)}
+.ladder b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+td.w{font-family:var(--display);font-size:18px}
+
+@media (max-width:820px){
+  .top{grid-template-columns:minmax(0,1fr)}
+  .coach h1{font-size:28px}
+  .opts{grid-template-columns:1fr}
+  .target{font-size:38px}
+}
+@media (max-width:520px){
+  .paper{padding:22px 14px 24px 44px}
+  .paper::before{left:30px}
+  .name{font-size:24px}
+  .tabs button{padding:8px 12px}
+}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script>
+(function(){
+var DAY=864e5, INT=[0,1,2,5,10,21,45], KEY='echo-english-v1';
+
+var LESSONS=[
+{id:1,title:"Set your goal",sub:"Know what you are aiming for",topic:"choosing a goal and a plan",
+ intro:"Before you learn a single new word, decide what you are learning for. Learners who can name their goal and their daily study time are far more likely to keep going. These six words are the language you will use to talk about your own plan.",
+ expect:"Choose your daily minutes and reminder time on the Today page, then practise six words. It takes about five minutes.",
+ words:[
+ {w:"goal",pos:"noun",def:"something you want to achieve in the future",ex:"My goal is to speak English at work by June."},
+ {w:"motivation",pos:"noun",def:"the reason or energy that makes you want to do something",ex:"Seeing your own progress is a great source of motivation."},
+ {w:"progress",pos:"noun",def:"improvement over time, or movement towards a goal",ex:"You are making good progress with your speaking."},
+ {w:"effort",pos:"noun",def:"the energy you use, in your body or mind, to do something difficult",ex:"She made an effort to speak English at lunch."},
+ {w:"schedule",pos:"noun",def:"a plan that shows when things will happen",ex:"Check the schedule: the class starts at nine on Tuesday."},
+ {w:"commit",pos:"verb",def:"to promise yourself or someone else that you will do something",ex:"She decided to commit to studying five days a week."}
+]},
+{id:2,title:"How memory works",sub:"Why you forget, and how to stop it",topic:"how your memory works",
+ intro:"You forget most of what you learn unless you meet it again at the right time. This lesson explains why, and why Omniloop brings each word back after 1, 2, 5, 10 and more days.",
+ expect:"Practise six words. After this lesson your first reviews will start to appear on the Today page.",
+ words:[
+ {w:"retain",pos:"verb",def:"to keep information in your memory",ex:"Short, regular lessons help you retain more words."},
+ {w:"recall",pos:"verb",def:"to remember something and bring it back to your mind",ex:"Can you recall the word we learned on Monday?"},
+ {w:"review",pos:"verb",def:"to look at something again so that you remember it or improve it",ex:"Review new words after one day, then after three days."},
+ {w:"context",pos:"noun",def:"the situation or the words around a word that help show its meaning",ex:"You can often guess a new word from its context."},
+ {w:"forget",pos:"verb",def:"to not remember something any more",ex:"We forget most new information within a few days if we never review it."},
+ {w:"associate",pos:"verb",def:"to connect one thing with another in your mind",ex:"Try to associate each new word with a picture or a feeling."}
+]},
+{id:3,title:"Practise every day",sub:"Small contact, every day",topic:"building a daily habit",
+ intro:"Fluency is built by small daily contact with English, not by one long weekend session. These words describe the kind of practice that works.",
+ expect:"Practise six words, then decide on one daily English habit you can keep.",
+ words:[
+ {w:"habit",pos:"noun",def:"something you do regularly, often without thinking about it",ex:"Brushing your teeth is a habit; studying English can become one too."},
+ {w:"consistent",pos:"adjective",def:"doing something in the same way, again and again, over time",ex:"It is better to be consistent than to study for five hours once a month."},
+ {w:"immersion",pos:"noun",def:"learning a language by being surrounded by it all the time",ex:"Living abroad is the fastest form of immersion, because you hear English all day."},
+ {w:"fluency",pos:"noun",def:"the ability to speak or write easily and smoothly",ex:"She speaks with great fluency, without stopping to search for words."},
+ {w:"accuracy",pos:"noun",def:"being correct, without mistakes",ex:"In a written exam, accuracy matters because every spelling mistake loses a point."},
+ {w:"expose",pos:"verb",def:"to let someone experience something, so that they become used to it",ex:"Podcasts expose learners to many different accents."}
+]},
+{id:4,title:"Learn from mistakes",sub:"Errors show what to practise next",topic:"learning from mistakes",
+ intro:"Mistakes show you what to practise next. In Omniloop a wrong answer brings the word back sooner, and you see the correct answer straight away.",
+ expect:"Practise six words. Wrong answers are expected and useful.",
+ words:[
+ {w:"mistake",pos:"noun",def:"something you do or say that is wrong",ex:"Making a mistake is a normal part of learning."},
+ {w:"feedback",pos:"noun",def:"comments about your work that help you improve it",ex:"My teacher's feedback showed me which verbs I always confuse."},
+ {w:"improve",pos:"verb",def:"to become better, or to make something better",ex:"Your pronunciation will improve if you record yourself and listen."},
+ {w:"challenge",pos:"noun",def:"something difficult that tests what you can do",ex:"Understanding fast speakers is a real challenge for me."},
+ {w:"confidence",pos:"noun",def:"the feeling that you can do something well",ex:"I lack confidence when I speak, so I practise with a friend first."},
+ {w:"gradually",pos:"adverb",def:"slowly, over a period of time",ex:"Your vocabulary will grow gradually if you study every day."}
+]}
+];
+var WORDS=[], BY={};
+LESSONS.forEach(function(l){l.words.forEach(function(w){w.lesson=l.id;w.id=w.w;WORDS.push(w);BY[w.id]=w;});});
+
+function fresh(){return {name:'',goal:'',minutes:15,remind:'08:00',offset:0,items:{},started:{}};}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.items)return Object.assign(fresh(),o);}}catch(e){}return fresh();}
+var S=load(), view='today', lessonId=null, session=null, summary=null, resetArm=false;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function now(){return Date.now()+S.offset*DAY;}
+
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmt(s){return esc(s).replace(/\*(.+?)\*/g,'<strong>$1</strong>');}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function plural(n,a,b){return n===1?a:b;}
+function agoPhrase(ts){var d=Math.floor((now()-ts)/DAY);return d<=0?'earlier today':d===1?'yesterday':d+' days ago';}
+function relDue(ts){var t=now();if(ts<=t){var late=Math.floor((t-ts)/DAY);return late>=1?'Due now ('+late+(late===1?' day':' days')+' late)':'Due now';}var d=Math.ceil((ts-t)/DAY);return d===1?'Tomorrow':'In '+d+' days';}
+function wre(word){return new RegExp('\\b'+word+'\\b','i');}
+
+/* ---------- learning engine ---------- */
+function seenCount(l){return l.words.filter(function(w){return S.items[w.id];}).length;}
+function lstatus(l){var n=seenCount(l);if(n===l.words.length)return 'done';if(n>0||S.started[l.id])return 'progress';return 'new';}
+function stageOf(it){if(!it)return 'new';return it.box<=2?'learning':it.box<=4?'familiar':'strong';}
+function dueIds(){var t=now();return Object.keys(S.items).filter(function(id){return S.items[id].due<=t;}).sort(function(a,b){return S.items[a].due-S.items[b].due;});}
+function grade(id,ok){
+  var t=now(),it=S.items[id];
+  if(!it){it=S.items[id]={box:0,first:t,last:t,due:t,ok:0,bad:0};}
+  else if(it.due>t){return 'extra';}
+  it.box=ok?Math.min(6,it.box+1):Math.max(1,it.box-2);
+  if(ok){it.ok++;}else{it.bad++;}
+  it.last=t;it.due=t+INT[it.box]*DAY;save();return 'scheduled';
+}
+function modeFor(id){var it=S.items[id],box=it?it.box:0;return box<=1?'meaning':box<=3?'gap':'spell';}
+
+/* the "next best step" decision */
+function coach(){
+  var t=now(),due=dueIds(),n=due.length,name=S.name||'there';
+  var inProg=LESSONS.filter(function(l){return lstatus(l)==='progress';})[0];
+  var nxt=LESSONS.filter(function(l){return lstatus(l)==='new';})[0];
+  var late=n?Math.floor((t-S.items[due[0]].due)/DAY):0;
+  var reviewFirst=n>0&&(n>=6||late>=3);
+  var greet='Hi '+(S.name?S.name:'')+(S.name?', ':'');
+  if(!S.name)greet='Hi, ';
+  if(reviewFirst||(!inProg&&n>0)){
+    var top=BY[due[0]],topIt=S.items[due[0]],cnt=Math.min(n,10),mins=Math.max(2,Math.round(cnt*0.5));
+    var reason=late>=3?'The oldest word is '+late+' days past its review date, and the longer a word waits, the more likely you are to forget it.':n>=6?'Several words are due at once. Clearing them now stops your reviews from piling up.':'These words are due for their next review, which is the best moment to bring them back.';
+    return {kind:'review',eyebrow:'Your next step',title:'Review '+n+' '+plural(n,'word','words'),reason:reason,cta:'Start review',link:'Open review ('+mins+' min)',meta:'About '+mins+' '+plural(mins,'minute','minutes'),
+      msg:greet+n+' '+plural(n,'word is','words are')+' ready for review. Start with *'+top.w+'* from Lesson '+top.lesson+'. You learned it '+agoPhrase(topIt.first)+', so now is the right moment to bring it back. It takes about '+mins+' minutes.'};
+  }
+  if(inProg){
+    var seen=seenCount(inProg),left=inProg.words.length-seen,started=S.started[inProg.id]||t;
+    var m2=Math.max(2,Math.round(left*0.7));
+    return {kind:'finish',lesson:inProg,eyebrow:'Your next step',title:'Finish Lesson '+inProg.id+': '+inProg.title,
+      reason:seen>0?'You started this lesson '+agoPhrase(started)+' and have not finished it. Finishing a lesson first keeps its words connected to each other.':'You opened this lesson '+agoPhrase(started)+' but have not practised the words yet.',
+      cta:'Continue lesson',link:'Continue Lesson '+inProg.id,meta:left+' of '+inProg.words.length+' words left · about '+m2+' minutes',
+      msg:seen>0?greet+'you are '+left+' '+plural(left,'word','words')+' away from finishing Lesson '+inProg.id+': *'+inProg.title+'*. You have done '+seen+' of '+inProg.words.length+'. Let\'s finish it today. It takes about '+m2+' minutes.':greet+'Lesson '+inProg.id+': *'+inProg.title+'* is waiting for you. You looked at it '+agoPhrase(started)+'. Let\'s practise the six words today.'};
+  }
+  if(nxt){
+    var first=Object.keys(S.items).length===0;
+    return {kind:'lesson',lesson:nxt,eyebrow:first?'Start here':'Your next step',title:'Lesson '+nxt.id+': '+nxt.title,
+      reason:first?'This is a free starter module. It teaches you how to learn, so you know what is expected before the course starts.':'You have no reviews waiting and nothing unfinished, so it is time for new material. Lessons follow the course order.',
+      cta:'Start lesson',link:'Start Lesson '+nxt.id,meta:'6 new words · about 5 minutes',
+      msg:(first?'Hi, welcome to Omniloop. ':greet)+'Today\'s lesson is Lesson '+nxt.id+': *'+nxt.title+'*. Six new words about '+nxt.topic+'. It takes about 5 minutes, and your reminder time is '+S.remind+'.'};
+  }
+  var keys=Object.keys(S.items).sort(function(a,b){return S.items[a].due-S.items[b].due;});
+  var soon=keys[0],when=relDue(S.items[soon].due).toLowerCase();
+  return {kind:'done',eyebrow:'Module complete',title:'Nothing is due right now',
+    reason:'You have finished all four lessons and no review is waiting. Your memory is strongest when you leave the gaps alone.',
+    cta:'Do extra practice',link:'Open extra practice',meta:'Extra practice does not change your schedule',
+    msg:greet+'Module 0 is complete and nothing is due today. Your next review is '+when+': *'+soon+'*. Keep your daily time of '+S.minutes+' minutes for the next module.'};
+}
+function coachGo(){
+  var c=coach();
+  if(c.kind==='review'){startSession(dueIds().slice(0,10),'Review');}
+  else if(c.kind==='finish'||c.kind==='lesson'){openLesson(c.lesson.id);}
+  else{var ids=Object.keys(S.items).sort(function(a,b){return S.items[a].box-S.items[b].box;}).slice(0,6);startSession(ids,'Extra practice');}
+}
+function openLesson(id){lessonId=id;view='lesson';var l=LESSONS[id-1];if(lstatus(l)!=='done'&&!S.started[id]){S.started[id]=now();save();}}
+
+/* ---------- practice sessions ---------- */
+function buildQ(id){
+  var w=BY[id],mode=modeFor(id),q={id:id,mode:mode},opts;
+  if(mode==='meaning'){
+    var pool=shuffle(WORDS.filter(function(x){return x.id!==id;}));
+    var same=pool.filter(function(x){return x.pos===w.pos;}),rest=pool.filter(function(x){return x.pos!==w.pos;});
+    opts=shuffle([w].concat(same.concat(rest).slice(0,3)));
+    q.options=opts.map(function(x){return x.def;});
+  }else if(mode==='gap'){
+    var cand=shuffle(WORDS.filter(function(x){return x.id!==id&&!wre(x.w).test(w.ex);}));
+    var rank=function(x){return (x.pos===w.pos?0:2)+(x.lesson!==w.lesson?0:1);};
+    cand.sort(function(a,b){return rank(a)-rank(b);});
+    opts=shuffle([w].concat(cand.slice(0,3)));
+    q.options=opts.map(function(x){return x.w;});
+  }
+  if(opts)q.answerIdx=opts.indexOf(w);
+  return q;
+}
+function startSession(ids,label){
+  if(!ids.length){view='today';return;}
+  ids=shuffle(ids);
+  session={ids:ids,label:label,total:ids.length,queue:ids.map(function(id){return {id:id,retry:0};}),first:{},answered:null};
+  session.cur=session.queue[0];session.q=buildQ(session.cur.id);view='session';
+}
+function answer(ok,extra){
+  var q=session.q,cur=session.cur,note='';
+  if(cur.retry===0){
+    var r=grade(q.id,ok);session.first[q.id]=ok;
+    if(r==='scheduled'){note=(ok?'':'It comes back once more in this session. ')+'Next review: '+relDue(S.items[q.id].due).toLowerCase()+'.';}
+    else{note='Extra practice, so your review schedule does not change.';}
+  }else{note='This was a retry, so your schedule does not change.';}
+  if(!ok&&cur.retry<2){session.queue.push({id:q.id,retry:cur.retry+1});}
+  session.answered=Object.assign({ok:ok,note:note},extra);
+  render();
+}
+function pick(i){if(!session||session.answered)return;answer(i===session.q.answerIdx,{idx:i});}
+function submitSpell(){
+  if(!session||session.answered)return;
+  var el=document.getElementById('spell-in'),v=(el.value||'').trim().toLowerCase();
+  if(!v)return;answer(v===session.q.id,{val:v});
+}
+function next(){
+  session.queue.shift();
+  if(!session.queue.length){finish();return;}
+  session.cur=session.queue[0];session.q=buildQ(session.cur.id);session.answered=null;render();
+}
+function finish(){
+  var ids=session.ids;
+  var rows=ids.map(function(id){return {id:id,ok:!!session.first[id]};});
+  var dues=ids.map(function(id){return S.items[id]&&S.items[id].due;}).filter(Boolean);
+  summary={label:session.label,total:ids.length,correct:rows.filter(function(r){return r.ok;}).length,rows:rows,nd:dues.length?Math.min.apply(null,dues):null};
+  session=null;view='summary';render();
+}
+function speak(t){try{if(window.speechSynthesis){window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(t);u.lang='en-GB';u.rate=0.9;window.speechSynthesis.speak(u);}}catch(e){}}
+
+/* ---------- demo helpers ---------- */
+function loadSample(){
+  var t=Date.now();S=fresh();S.name='Sam';S.goal='Speak confidently in work meetings';S.started={1:t-6*DAY,2:t-3*DAY};
+  function mk(id,box,firstAgo,lastAgo,ok,bad){S.items[id]={box:box,first:t-firstAgo*DAY,last:t-lastAgo*DAY,due:t-lastAgo*DAY+INT[box]*DAY,ok:ok,bad:bad};}
+  mk('goal',3,6,4,3,0);mk('motivation',2,6,5,2,1);mk('progress',2,6,3,2,0);mk('effort',1,6,6,1,1);mk('schedule',3,6,2,3,0);mk('commit',1,6,6,1,1);
+  mk('retain',1,3,3,1,0);mk('recall',1,3,3,1,0);mk('review',1,3,3,1,1);
+  save();
+}
+
+/* ---------- views ---------- */
+function dateLabel(){return new Date(now()).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
+function header(){
+  var tab=view==='lesson'?'lessons':(view==='session'||view==='summary')?'':view;
+  function b(v,l){return '<button data-a="tab" data-v="'+v+'"'+(tab===v?' class="on" aria-current="page"':'')+'>'+l+'</button>';}
+  return '<header class="head"><div class="brand"><svg class="mark" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="16" cy="20" r="6"/><circle cx="16" cy="20" r="12" opacity=".6"/><circle cx="16" cy="20" r="18" opacity=".3"/></svg><div><div class="name">Omniloop</div><div class="sub">Ten minutes a day. English that stays.</div></div></div><nav class="tabs" aria-label="Sections">'+b('today','Today')+b('lessons','Lessons')+b('words','Words')+'</nav></header>';
+}
+function demoBar(){
+  var o=S.offset;
+  return '<div class="demo"><span><strong>Demo clock</strong> · '+esc(dateLabel())+' (day '+(o>=0?'+':'')+o+')</span><button class="btn small ghost" data-a="plus" data-n="1">+1 day</button><button class="btn small ghost" data-a="plus" data-n="5">+5 days</button><span class="spacer"></span><button class="btn small ghost" data-a="sample">Load sample learner</button><button class="btn small warn" data-a="reset">'+(resetArm?'Click again to erase':'Reset')+'</button><span class="hint">Move the clock forward to watch the next step and the message change. Nothing here is sent to a real phone yet.</span></div>';
+}
+function phone(c){
+  return '<div class="phone" role="img" aria-label="Preview of the message the learner receives"><div class="ph-head"><span class="av" aria-hidden="true">O</span><div><b>Omniloop</b><small>Message preview</small></div></div><div class="ph-body"><span class="daychip">Today, '+esc(S.remind)+'</span><div class="bubble"><p>'+fmt(c.msg)+'</p><button class="linkbtn" data-a="coachgo">'+esc(c.link)+'</button><span class="time">'+esc(S.remind)+'</span></div></div></div>';
+}
+function pill(st){return '<span class="pill '+(st==='done'?'p-done':st==='progress'?'p-prog':'')+'">'+(st==='done'?'Done':st==='progress'?'In progress':'Not started')+'</span>';}
+function cardModule(){
+  var rows=LESSONS.map(function(l){var st=lstatus(l);return '<li><span class="t"><button class="linkbtn" data-a="open" data-id="'+l.id+'">Lesson '+l.id+' · '+esc(l.title)+'</button><br><span class="muted">'+seenCount(l)+' of '+l.words.length+' words</span></span>'+pill(st)+'</li>';}).join('');
+  return '<section class="card"><h2>Module 0 progress</h2><ul class="lines">'+rows+'</ul></section>';
+}
+function stageCounts(){var c={new:0,learning:0,familiar:0,strong:0};WORDS.forEach(function(w){c[stageOf(S.items[w.id])]++;});return c;}
+function stageBar(){
+  var c=stageCounts(),tot=WORDS.length;
+  var defs=[['new','New','--st-new'],['learning','Learning','--st-learn'],['familiar','Familiar','--st-fam'],['strong','Strong','--st-strong']];
+  return '<div class="stack" role="img" aria-label="Words by memory stage">'+defs.map(function(d){return '<i style="width:'+(c[d[0]]/tot*100)+'%;background:var('+d[2]+')"></i>';}).join('')+'</div><div class="legend">'+defs.map(function(d){return '<span><span class="dot" style="background:var('+d[2]+')"></span>'+d[1]+' <b>'+c[d[0]]+'</b></span>';}).join('')+'</div>';
+}
+function forecast(){
+  var t=now(),cols=[0,0,0,0,0,0,0];
+  Object.keys(S.items).forEach(function(id){var due=S.items[id].due,d=due<=t?0:Math.ceil((due-t)/DAY);if(d<=6)cols[d]++;});
+  var mx=Math.max.apply(null,cols.concat([1])),labels=['Now','1d','2d','3d','4d','5d','6d'];
+  return '<div class="fc" role="img" aria-label="Reviews due over the next seven days">'+cols.map(function(n,i){return '<div class="col"><span class="n">'+n+'</span><div class="b" style="height:'+Math.round(n/mx*72)+'px;'+(n===0?'opacity:.25':'')+'"></div><span class="l">'+labels[i]+'</span></div>';}).join('')+'</div>';
+}
+function cardMemory(){
+  var any=Object.keys(S.items).length>0;
+  return '<section class="card"><h2>Your memory</h2>'+stageBar()+'<div class="sep"></div><p class="eyebrow">Reviews coming up</p>'+forecast()+(any?'':'<p class="note">Reviews appear here after your first lesson.</p>')+'</section>';
+}
+function cardAgreement(){
+  var mins=[10,15,20].map(function(m){return '<label><input type="radio" name="minutes" value="'+m+'"'+(S.minutes===m?' checked':'')+'> '+m+' min</label>';}).join('');
+  var times=['07:00','08:00','12:30','18:00','21:00'].map(function(x){return '<option'+(S.remind===x?' selected':'')+'>'+x+'</option>';}).join('');
+  return '<section class="card"><h2>Your learning agreement</h2><div class="field"><label for="f-name">First name</label><input type="text" id="f-name" value="'+esc(S.name)+'" autocomplete="given-name" placeholder="Used in your messages"></div><div class="field"><label for="f-goal">Why are you learning English?</label><input type="text" id="f-goal" value="'+esc(S.goal)+'" placeholder="For example: speak in work meetings"></div><fieldset><legend class="field"><span style="font-weight:700;font-size:14px">Daily study time</span></legend><div class="radios">'+mins+'</div></fieldset><div class="field"><label for="f-remind">Message me at</label><select id="f-remind">'+times+'</select></div><p class="note">Omniloop sends one message a day about the single most useful thing to do next.</p></section>';
+}
+function vToday(){
+  var c=coach();
+  return '<div class="top"><section class="card coach"><p class="eyebrow">'+esc(c.eyebrow)+'</p><h1>'+esc(c.title)+'</h1><p class="why"><strong>Why this, now?</strong> '+esc(c.reason)+'</p><div class="row"><button class="btn" data-a="coachgo">'+esc(c.cta)+'</button><span class="muted">'+esc(c.meta)+'</span></div></section><aside>'+phone(c)+'<p class="note">This is the message the learner would receive. It is built from their own progress, not a fixed reminder.</p></aside></div><div class="grid3">'+cardModule()+cardMemory()+cardAgreement()+'</div>';
+}
+function vLessons(){
+  return '<div class="lessons">'+LESSONS.map(function(l){
+    var st=lstatus(l),n=seenCount(l);
+    return '<section class="card lesson"><span class="eyebrow">Lesson '+l.id+'</span><h3>'+esc(l.title)+'</h3><p class="muted grow">'+esc(l.sub)+'</p>'+pill(st)+'<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="'+n+'"><i style="width:'+(n/6*100)+'%"></i></div><p class="muted">'+n+' of 6 words practised</p><button class="btn'+(st==='done'?' ghost':'')+'" data-a="open" data-id="'+l.id+'">'+(st==='done'?'Open lesson':st==='progress'?'Continue':'Start')+'</button></section>';
+  }).join('')+'</div>';
+}
+function vLesson(){
+  var l=LESSONS[lessonId-1],left=l.words.filter(function(w){return !S.items[w.id];}).length;
+  var cards=l.words.map(function(w){
+    var it=S.items[w.id];
+    return '<article class="wcard"><div class="row" style="justify-content:space-between"><span class="w">'+esc(w.w)+'</span><button class="btn small ghost" data-a="listen" data-t="'+esc(w.w)+'" aria-label="Listen to '+esc(w.w)+'">Listen</button></div><span class="pos">'+esc(w.pos)+'</span><p>'+esc(w.def)+'</p><p class="ex">'+esc(w.ex)+'</p><span class="muted" style="font-size:14px">'+(it?'Practised':'Not practised yet')+'</span></article>';
+  }).join('');
+  var label=left>0?'Practise '+left+' '+plural(left,'word','words'):'Practise these words again';
+  return '<button class="btn small ghost back" data-a="tab" data-v="lessons">Back to lessons</button><section class="card"><p class="eyebrow">Lesson '+l.id+'</p><h2 style="font-size:30px;margin-bottom:8px">'+esc(l.title)+'</h2><div class="expect"><div><h3>Why this lesson</h3><p>'+esc(l.intro)+'</p></div><div><h3>What you will do</h3><p>'+esc(l.expect)+'</p></div></div></section><div class="wcards">'+cards+'</div><div class="row"><button class="btn" data-a="practise" data-id="'+l.id+'">'+label+'</button>'+(left===0?'<span class="muted">Extra practice does not change your review schedule.</span>':'')+'</div>';
+}
+function vWords(){
+  var rows=WORDS.map(function(w){
+    var it=S.items[w.id],st=stageOf(it);
+    var acc=it&&(it.ok+it.bad)?Math.round(it.ok/(it.ok+it.bad)*100)+'%':'–';
+    return '<tr><td class="w">'+esc(w.w)+'</td><td>Lesson '+w.lesson+'</td><td>'+st.charAt(0).toUpperCase()+st.slice(1)+'</td><td>'+(it?it.box:'–')+'</td><td>'+(it?esc(relDue(it.due)):'–')+'</td><td>'+acc+'</td></tr>';
+  }).join('');
+  var ladder=INT.slice(1).map(function(d,i){return '<li><b>Box '+(i+1)+'</b>'+d+(d===1?' day':' days')+'</li>';}).join('');
+  return '<section class="card" style="margin-bottom:20px"><h2>How your words are scheduled</h2><p class="muted">A correct answer moves a word up one box, so it returns later. A wrong answer moves it back two boxes, so it returns sooner. The question also gets harder as a word moves up: meaning, then fill the gap, then spelling.</p><ul class="ladder">'+ladder+'</ul><div class="sep"></div>'+stageBar()+'</section><section class="card"><h2>All 24 words</h2><div class="scroll"><table><thead><tr><th>Word</th><th>Lesson</th><th>Stage</th><th>Box</th><th>Next review</th><th>Accuracy</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+function optsHtml(q,a,kind){
+  var letters=['A','B','C','D'];
+  return '<div class="opts">'+q.options.map(function(o,i){
+    var cls='opt',tag='';
+    if(a){if(i===q.answerIdx){cls+=' correct';tag='<span class="tag">Correct answer</span>';}else if(i===a.idx){cls+=' wrong';tag='<span class="tag">Your answer</span>';}}
+    return '<button class="'+cls+'" data-a="pick" data-i="'+i+'"'+(a?' disabled':'')+'><span class="k" aria-hidden="true">'+letters[i]+'</span><span>'+esc(o)+tag+'</span></button>';
+  }).join('')+'</div>';
+}
+function vSession(){
+  var q=session.q,a=session.answered,w=BY[q.id];
+  var remain=new Set(session.queue.slice(a?1:0).map(function(x){return x.id;})).size;
+  var pct=Math.round((1-remain/session.total)*100),done=session.total-remain;
+  var modeName={meaning:'Meaning',gap:'Fill the gap',spell:'Spell it'}[q.mode];
+  var gapSentence=esc(w.ex).replace(wre(w.w),'<span class="blank"></span>');
+  var body='';
+  if(q.mode==='meaning'){
+    body='<p class="qlabel">What does this word mean?</p><div class="target">'+esc(w.w)+'<button class="btn small ghost" data-a="listen" data-t="'+esc(w.w)+'">Listen</button></div><p class="muted" style="background:var(--surface);align-self:flex-start"><em>'+esc(w.pos)+'</em></p>'+optsHtml(q,a);
+  }else if(q.mode==='gap'){
+    body='<p class="qlabel">Choose the word that fits the gap.</p><p class="sentence">'+gapSentence+'</p>'+optsHtml(q,a);
+  }else{
+    body='<p class="qlabel">Type the word that matches this meaning.</p><p class="def">'+esc(w.def)+'</p><p class="sentence">'+gapSentence+'</p><form class="spell" id="spell" autocomplete="off"><input id="spell-in" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Your answer" placeholder="'+w.w.length+' letters, starts with '+esc(w.w.charAt(0))+'"'+(a?' value="'+esc(a.val||'')+'" disabled':'')+'>'+(a?'':'<button class="btn" type="submit">Check</button>')+'</form>';
+  }
+  var fb='';
+  if(a){
+    var exHtml=esc(w.ex).replace(wre(w.w),function(m){return '<b>'+m+'</b>';});
+    fb='<div class="fb '+(a.ok?'good':'bad')+'" role="status"><span class="head2">'+(a.ok?'Correct.':'Not quite.')+'</span><span>'+(a.ok?'':'The answer is <b>'+esc(w.w)+'</b>, '+esc(w.def)+'. ')+exHtml+'</span><span class="muted">'+esc(a.note)+'</span></div><div><button class="btn" id="nextbtn" data-a="next">'+(session.queue.length>1?'Next':'Finish')+'</button></div>';
+  }
+  return '<div class="sess-top"><span><span class="eyebrow">'+esc(session.label)+'</span> · <span class="pill">'+modeName+'</span></span><span class="row"><span class="muted">'+done+' of '+session.total+' words done</span><button class="btn small ghost" data-a="tab" data-v="today">Leave session</button></span></div><div class="bar" style="margin-bottom:16px"><i style="width:'+pct+'%"></i></div><div class="paper">'+body+fb+'</div>';
+}
+function vSummary(){
+  var s=summary,wrong=s.total-s.correct;
+  var rows=s.rows.map(function(r){var it=S.items[r.id];return '<li><span class="t"><b style="font-family:var(--display);font-weight:400;font-size:18px">'+esc(r.id)+'</b> <span class="muted">'+(r.ok?'Correct first time':'Needs another look')+'</span></span><span class="muted">'+(it?esc(relDue(it.due)):'')+'</span></li>';}).join('');
+  var msg=s.correct/s.total>=0.8?'Strong session. These words move further away in your schedule.':'The words you missed come back sooner, so you can fix them while they are fresh.';
+  return '<section class="card"><p class="eyebrow">'+esc(s.label)+' complete</p><h2 style="font-size:30px">'+esc(msg)+'</h2><div class="stats"><div><b>'+s.correct+'/'+s.total+'</b><span>correct first time</span></div><div><b>'+wrong+'</b><span>to look at again</span></div>'+(s.nd?'<div><b>'+esc(relDue(s.nd).replace('Due now','Now'))+'</b><span>next review</span></div>':'')+'</div><ul class="lines">'+rows+'</ul><div class="sep"></div><button class="btn" data-a="home">Back to Today</button></section>';
+}
+function render(){
+  var app=document.getElementById('app'),body='';
+  if(view==='today')body=vToday();else if(view==='lessons')body=vLessons();else if(view==='lesson')body=vLesson();else if(view==='words')body=vWords();else if(view==='session')body=vSession();else body=vSummary();
+  app.innerHTML=header()+demoBar()+body;
+  if(view==='session'){
+    var el=session.answered?document.getElementById('nextbtn'):document.getElementById('spell-in');
+    if(el){try{el.focus({preventScroll:true});}catch(e){}}
+  }
+}
+
+/* ---------- events ---------- */
+function act(a,d){
+  if(a!=='reset')resetArm=false;
+  if(a==='tab'){view=d.v;session=null;}
+  else if(a==='plus'){S.offset+=+d.n;save();}
+  else if(a==='sample'){loadSample();view='today';session=null;}
+  else if(a==='reset'){if(resetArm){S=fresh();save();resetArm=false;view='today';session=null;}else{resetArm=true;}}
+  else if(a==='coachgo'){coachGo();}
+  else if(a==='open'){openLesson(+d.id);}
+  else if(a==='practise'){var l=LESSONS[+d.id-1];var un=l.words.filter(function(w){return !S.items[w.id];}).map(function(w){return w.id;});startSession(un.length?un:l.words.map(function(w){return w.id;}),'Lesson '+l.id);}
+  else if(a==='pick'){pick(+d.i);return;}
+  else if(a==='next'){next();return;}
+  else if(a==='listen'){speak(d.t);return;}
+  else if(a==='home'){view='today';summary=null;}
+  render();
+  if(a==='tab'||a==='open'||a==='practise'||a==='home'||a==='coachgo'){try{window.scrollTo(0,0);}catch(e){}}
+}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-a]');if(!b||b.disabled)return;act(b.getAttribute('data-a'),b.dataset);});
+document.addEventListener('submit',function(e){if(e.target.id==='spell'){e.preventDefault();submitSpell();}});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='f-name'){S.name=t.value.trim();save();}
+  else if(t.id==='f-goal'){S.goal=t.value.trim();save();}
+  else if(t.name==='minutes'){S.minutes=+t.value;save();render();}
+  else if(t.id==='f-remind'){S.remind=t.value;save();render();}
+});
+render();
+})();
+</script>
+
+</body>
+</html>
