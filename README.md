@@ -1,34 +1,44 @@
 # Omniloop
 
-Ten minutes a day. English that stays.
+**Omniloop keeps students practising daily and turns their answers into a weekly report that prepares the teacher's live lesson.**
 
-Omniloop is a prototype of a daily English practice system for adults who struggle to stay consistent. It is built around small steps, spaced review, and messages that follow the learner's own progress instead of a fixed reminder schedule.
+**Live demo (no install, no sign-in):** https://khirakaisaa-bit.github.io/OmniLoop/
 
-**Live demo:** https://khirakaisaa-bit.github.io/OmniLoop/
+## The problem
+Daily practice is the best way to improve a language, but one teacher cannot track daily practice for 20 or 30 students without burning out. Sending tasks, chasing quiet students, correcting answers and preparing the live lesson from scattered information is repetitive work.
 
-## Try it
-1. Open the live demo. There is nothing to install and no sign-in.
-2. Press "Load sample learner" to see the system with a learning history.
-3. On the Today page, read the next step and the message preview, then press the big button to practise.
-4. Use "+1 day" or "+5 days" (the demo clock) to see how the next step and the message change over time.
+## What Omniloop does
+- **Course-based daily tasks.** Each course week has an objective. It is split into four small daily tasks, plus a cheat day (catch up), a rest day, and the live session.
+- **Mood-based length.** Students check in with how they feel and choose a 2-minute or a 10-minute version. A short practice still counts. There are no streaks.
+- **AI feedback on each answer.** A feedback agent (Google Gemini, called through a small Cloudflare Worker) replies straight away with one thing done well, up to two corrections, and a suggested version. If the AI is unavailable, the page falls back to simple rules and says so.
+- **Teacher dashboard.** Who is active, who has gone quiet (with a drafted personal message), course progress, a student detail page, and a weekly report: what to **focus on** in the live lesson and what to **mention briefly**, with evidence taken from the students' own answers.
+- **Assistants.** Task Sender, Feedback Giver and Summariser, which the teacher can switch on or off.
 
-## What works today
-- A B1 starter module, "Learning how to learn English": 4 lessons and 24 words.
-- Three practice modes that get harder as a word is learned: meaning, fill the gap, spelling.
-- Spaced repetition: a correct answer sends a word back after 1, 2, 5, 10, 21 or 45 days, and a wrong answer brings it back sooner.
-- A "next step" decision (review, finish a lesson, or start a new one) with the reason shown.
-- A preview of the message a learner would receive. Nothing is sent to a real phone yet.
-- Progress is saved in the browser only.
+## How to try it (2 minutes)
+1. Open the live demo and choose **I'm a teacher**. Read the dashboard and the **Weekly report**.
+2. Press **Try the student side**, do a check-in, write an answer and read the AI feedback.
+3. Go back to the teacher side: your check-in appears as a live row, and the report includes your answer.
+4. Use the **demo day** arrows on the right to move through the week.
 
-## Not built yet
-Learner accounts, real WhatsApp and email reminders, a 2-minute low-energy step, a placement test, weekly challenges, and community chat.
+## What is real and what is simulated
+- **Real:** the AI feedback on a student's answer, the dashboard and the weekly report, both computed from the answers in the page.
+- **Simulated:** the sample class (six generated students), their answers and time spent, the assistants' daily run (simple rules), and message sending. Nothing is sent to anyone.
+- **Not built yet:** accounts and logins, many teachers and classes, WhatsApp sending, voice and video tasks, the library and chats (shown as locked).
 
-## Run it locally
-Download index.html and open it in any browser.
+## Tech stack
+- HTML, CSS and vanilla JavaScript in one page, hosted on GitHub Pages
+- Cloudflare Workers (keeps the API key secret and returns feedback)
+- Google Gemini API (feedback)
+- Browser localStorage (demo state)
+- Built with Claude (AI coding assistant)
+
+## Files
+- `index.html`: the whole app
+- `worker/worker.js`: the feedback agent that runs on Cloudflare Workers (the API key is stored as a secret, not in this repository)
 
 ## Who built what
-- Kouider Aissa Kheira: product idea, learning method, curriculum and word list, rules for the review schedule; directed and tested the build.
-- Claude (AI by Anthropic): wrote the code from those directions.
+- **Kheira Kouider Aissa**: idea, teaching design (course structure, week rhythm, feedback criteria, report logic), testing, and all product decisions.
+- **Claude (AI assistant)**: wrote the code and the Worker under her direction, and helped draft the texts.
 
-## Built with
-HTML, CSS and JavaScript in a single file. No framework and no server.
+## What happens next
+Real accounts and classes for many teachers, WhatsApp sending, voice and video tasks, a library by interest, a course builder, and a pilot with my own learners to measure the time saved.
