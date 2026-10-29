@@ -738,14 +738,18 @@ function review(text){
 function getFeedback(text,t,kind){
   var rules=review(text);
   if(!AI_URL)return Promise.resolve(Object.assign({source:'rules'},rules));
-  var ctl=typeof AbortController!=='undefined'?new AbortController():null;
-  var timer=setTimeout(function(){if(ctl)ctl.abort();},15000);
-  return fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,task:t,kind:kind}),signal:ctl?ctl.signal:undefined})
-    .then(function(r){return r.json();})
-    .then(function(d){clearTimeout(timer);
-      if(!d||!d.ok||!Array.isArray(d.fixes))throw new Error('bad');
-      return {source:'ai',good:d.good,fixes:d.fixes,tags:d.tags||[],improved:d.improved||null,follow:d.follow||''};})
-    .catch(function(){clearTimeout(timer);return Object.assign({source:'rules'},rules);});
+  function once(){
+    var ctl=typeof AbortController!=='undefined'?new AbortController():null;
+    var timer=setTimeout(function(){if(ctl)ctl.abort();},12000);
+    return fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,task:t,kind:kind}),signal:ctl?ctl.signal:undefined})
+      .then(function(r){return r.json();})
+      .then(function(d){clearTimeout(timer);
+        if(!d||!d.ok||!Array.isArray(d.fixes))throw new Error('bad');
+        return {source:'ai',good:d.good,fixes:d.fixes,tags:d.tags||[],improved:d.improved||null,follow:d.follow||''};})
+      .catch(function(e){clearTimeout(timer);throw e;});
+  }
+  /* one automatic retry, then the simple rules */
+  return once().catch(function(){return once();}).catch(function(){return Object.assign({source:'rules'},rules);});
 }
 function liveName(){return S.me.name&&S.me.name.trim()?S.me.name.trim():'You (live demo)';}
 function studentList(){
@@ -800,7 +804,7 @@ function vFlow(){
   }
   var fb=flow.fb;
   return sHead('Feedback','Task '+t+' of 4 · '+task.title)
-   +'<div class="card">'+(fb.source==='ai'?'<span class="pill ok">AI feedback</span>':'<span class="pill">Simulated feedback: simple rules, not a live AI model</span>')
+   +'<div class="card">'+(fb.source==='ai'?'<span class="pill ok">AI feedback</span>':'<span class="pill">Simulated feedback: simple rules, not a live AI model</span>'+(fb.reason?'<p class="mutebox" style="margin-top:6px">The AI agent did not answer ('+esc(fb.reason)+'), so the simple rules were used.</p>':''))
    +'<p style="margin:12px 0 4px" class="mutebox">Your answer</p><p class="quote" style="font-size:16px">"'+esc(flow.text)+'"</p>'
    +'<p style="margin-top:14px"><b>Well done:</b> '+esc(fb.good)+'</p>'
    +(fb.fixes.length?'<p style="margin-top:12px"><b>'+(fb.fixes.length===1?'One thing to fix':'Two things to fix')+':</b></p><div class="stack" style="margin-top:6px">'+fb.fixes.map(function(f){return '<div class="item"><span class="chip">'+esc(TAGNAME[f.tag])+'</span> '+esc(f.msg)+'</div>';}).join('')+'</div>':'<p style="margin-top:12px">No problems found in this answer.</p>')
