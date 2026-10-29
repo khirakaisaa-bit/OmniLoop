@@ -1,11 +1,11 @@
 # Omniloop
 
-**Omniloop keeps students practising daily and turns their answers into a weekly report that prepares the teacher's live lesson.**
+**An AI system that lifts teachers' daily load: it sends tasks, gives feedback and turns students' input into better lessons.**
 
 **Live demo (no install, no sign-in):** https://khirakaisaa-bit.github.io/OmniLoop/
 
 ## The problem
-Daily practice is the best way to improve a language, but one teacher cannot track daily practice for 20 or 30 students without burning out. Sending tasks, chasing quiet students, correcting answers and preparing the live lesson from scattered information is repetitive work.
+Learners keep asking their teacher for something to practise between live sessions, because progress comes from daily immersion, not one lesson a week. But sending tasks, chasing replies, correcting answers and spotting who is struggling by hand is too much for one teacher, so daily practice fades and the live lesson is planned without knowing what learners found difficult.
 
 ## What Omniloop does
 - **Course-based daily tasks.** Each course week has an objective. It is split into four small daily tasks, plus a cheat day (catch up), a rest day, and the live session.
@@ -13,6 +13,9 @@ Daily practice is the best way to improve a language, but one teacher cannot tra
 - **AI feedback on each answer.** A feedback agent (Google Gemini, called through a small Cloudflare Worker) replies straight away with one thing done well, up to two corrections, and a suggested version. If the AI is unavailable, the page falls back to simple rules and says so.
 - **Teacher dashboard.** Who is active, who has gone quiet (with a drafted personal message), course progress, a student detail page, and a weekly report: what to **focus on** in the live lesson and what to **mention briefly**, with evidence taken from the students' own answers.
 - **Assistants.** Task Sender, Feedback Giver and Summariser, which the teacher can switch on or off.
+
+## Run it locally
+There is nothing to install. Download `index.html` from this repository and open it in any browser. Everything except the AI feedback runs inside that one page; the AI feedback calls the Worker in `worker/worker.js`, and the page falls back to simple built-in rules if it cannot reach it.
 
 ## How to try it (2 minutes)
 1. Open the live demo and choose **I'm a teacher**. Read the dashboard and the **Weekly report**.
