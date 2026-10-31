@@ -300,9 +300,11 @@ var STUDENTS=[
 
 /* ---------- state ---------- */
 var KEY='omniloop-v2';
-function fresh(){return {role:null,theme:null,view:'dash',day:3,sel:null,contacted:{},auto:{sender:true,feedback:true,summary:true},log:[],session:{day:6,time:'18:00'},tour:true,me:{name:'',goal:'',interest:'',share:true},live:{}};}
+function fresh(){return {role:null,theme:null,view:'dash',day:3,sel:null,contacted:{},auto:{sender:true,feedback:true,summary:true},log:[],session:{day:6,time:'18:00'},tour:true,me:{name:'',goal:'',interest:'',share:true},live:{},extra:[]};}
 var S=load();
 var flow=null;
+var rec=null,recOn=false;
+var briefSt={status:'idle',data:null,key:''};
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&typeof o==='object')return Object.assign(fresh(),o);}}catch(e){}return fresh();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
@@ -350,7 +352,7 @@ function model(){
     var cu=null;
     if(S.day>=5&&st.catchUp){cu=st.catchUp;done++;mins+=7;}
     var quiet=false;
-    if(due>=2){quiet=acts[due-1].kind==='-'&&acts[due-2].kind==='-';}
+    if(due>=2&&!st.invited){quiet=acts[due-1].kind==='-'&&acts[due-2].kind==='-';}
     var lastDay=-1;
     for(t=due;t>=1;t--){if(acts[t-1].kind!=='-'){lastDay=t;break;}}
     if(cu&&lastDay<5)lastDay=5;
@@ -379,16 +381,18 @@ function model(){
     var n=answers.filter(function(a){return c.re.test(a.text)&&!(c.bad&&c.bad(a));}).length;
     return {label:c.label,n:n,of:answers.length};
   }).filter(function(c){return c.of>=4&&c.n/c.of>=0.5;});
-  var dueTotal=rows.length*due;
-  var doneTotal=rows.reduce(function(s,r){return s+Math.min(r.done,due);},0);
+  var act=rows.filter(function(r){return !r.st.invited;});
+  var dueTotal=act.length*due;
+  var doneTotal=act.reduce(function(s,r){return s+Math.min(r.done,due);},0);
   var quiet=rows.filter(function(r){return r.quiet;});
-  var courseDone=rows.reduce(function(s,r){return s+r.courseDone;},0);
-  var courseDue=rows.length*(8+due);
-  return {due:due,rows:rows,answers:answers,tags:tl,focus:focus,rest:rest,checks:checks,
+  var courseDone=act.reduce(function(s,r){return s+r.courseDone;},0);
+  var courseDue=act.length*(8+due);
+  return {due:due,rows:rows,act:act,answers:answers,tags:tl,focus:focus,rest:rest,checks:checks,
     dueTotal:dueTotal,doneTotal:doneTotal,quiet:quiet,courseDone:courseDone,courseDue:courseDue};
 }
 function todayState(r){
   var d=S.day,k=dayKind(d);
+  if(r.st.invited&&!r.done)return {t:'Invited',c:''};
   if(k==='task'){var c=r.acts[d-1].kind;return c==='f'?{t:'Done (10 min)',c:'ok'}:c==='t'?{t:'Done (2 min)',c:'warn'}:{t:'Not yet',c:'bad'};}
   if(k==='rest')return {t:'Rest day',c:''};
   if(k==='cheat')return r.cu?{t:'Caught up',c:'ok'}:{t:'Cheat day',c:''};
@@ -400,6 +404,7 @@ function moodOf(r){
   return {t:'No check-in',c:'',d:0};
 }
 function lastLabel(r){
+  if(r.st.invited&&r.lastDay<0)return 'Invited';
   if(r.lastDay<0)return S.day===0?'New week':'No activity yet';
   var diff=S.day-r.lastDay;
   return diff<=0?'Today':diff===1?'Yesterday':DN[r.lastDay];
@@ -410,7 +415,7 @@ function dots(r){
     if(d===0){cls='r';txt='';}
     else if(d<=4){
       if(d>Math.min(S.day,4)){cls='';txt='';}
-      else{var k=r.acts[d-1].kind;cls=k==='f'?'f':k==='t'?'t':'m';txt=k==='-'?'':'';}
+      else{var k=r.acts[d-1].kind;cls=k==='f'?'f':k==='t'?'t':(r.st.invited?'':'m');txt='';}
     }
     else if(d===5){cls=(S.day>=5&&r.cu)?'f':'';}
     else{cls='l';txt='';}
@@ -437,10 +442,10 @@ function vLanding(){
    +'<h1>Keeps students practising between live sessions.</h1>'
    +'<p class="lead">Small daily tasks, cut from the course, replace the teacher\'s repetitive work. The week\'s answers become the plan for the live lesson.</p>'
    +'<div class="doors">'
-   +'<button class="door" data-a="enter" data-r="teacher"><b>I\'m a teacher</b><span>See the class, the course, the weekly report and the assistants that run the daily routine.</span><span class="go">Open the teacher dashboard</span></button>'
+   +'<button class="door" data-a="enter" data-r="teacher"><b>I\'m a teacher</b><span>See the class, the course, the weekly report and the AI agents that take over the daily routine.</span><span class="go">Open the teacher dashboard</span></button>'
    +'<button class="door" data-a="enter" data-r="student"><b>I\'m a student</b><span>Check in with your mood, do today\'s task and get feedback.</span><span class="go">Open the student space</span></button>'
    +'</div>'
-   +'<p class="fine">Demo shortcut: no sign-in, so one visitor can try both roles. In the full product each role has its own login, and teachers never open a student\'s account. The class, answers and assistants in this demo are sample data and simple rules, not real students or a live AI model.</p>'
+   +'<p class="fine">Demo shortcut: no sign-in, so one visitor can try both roles. In the full product each role has its own login, and teachers never open a student\'s account. The class and its answers are sample data, not real students. The feedback on a student\'s answer comes from a live AI model.</p>'
    +'</div>';
 }
 
@@ -465,13 +470,7 @@ function railHtml(m){
    +'<p class="mutebox">Week '+CUR+': '+esc(COURSE.weeks[CUR-1].title)+'</p>'
    +'<div class="btns" style="margin-top:10px;align-items:center"><label class="sr" for="rs-day">Day</label><select id="rs-day" data-a="resday"><option value="5"'+(S.session.day===5?' selected':'')+'>Friday</option><option value="6"'+(S.session.day===6?' selected':'')+'>Saturday</option><option value="0"'+(S.session.day===0?' selected':'')+'>Sunday</option></select>'
    +'<label class="sr" for="rs-time">Time</label><select id="rs-time" data-a="restime">'+['17:00','18:00','19:00','20:00'].map(function(t){return '<option'+(S.session.time===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'
-   +'<p class="mutebox" style="margin-top:8px">Changing the time tells students automatically (simulated here).</p></div>';
-  // today's assistant activity
-  var today=S.log.filter(function(l){return l.day===S.day;});
-  h+='<div class="card sm"><h3>Assistants today</h3>';
-  if(today.length){h+='<div class="log" style="margin-top:8px">'+today.map(function(l){return '<div><b>'+esc(l.who)+'</b><span>'+esc(l.text)+'</span></div>';}).join('')+'</div>';}
-  else{h+='<p class="mutebox" style="margin-top:6px">Not run yet for '+DN[S.day]+'. Open Assistants and press "Run today\'s automation".</p>';}
-  h+='</div>';
+   +'<p class="mutebox" style="margin-top:8px">Changing the time would tell students automatically. In this demo nothing is sent.</p></div>';
   // personal messages
   h+='<div class="card sm wide"><h3>Needs a personal word</h3>';
   if(!m.quiet.length){h+='<p class="mutebox" style="margin-top:6px">Everyone has been active in the last two task days.</p>';}
@@ -508,11 +507,11 @@ function vDash(m){
   var hr=dayKind(S.day);
   var h='<div class="banner"><div><h1>Good evening</h1><p>'+COURSE.title+' '+COURSE.level+' · Week '+CUR+' of 8: '+esc(COURSE.weeks[CUR-1].title)+'</p></div>'
    +'<p>'+(m.quiet.length?m.quiet.length+' '+plural(m.quiet.length,'student needs','students need')+' a personal word. ':'Everyone is on track. ')+'The next live session is '+esc(sessionLabel())+'.</p>'
-   +'<div class="btns"><button class="btn pri" data-a="nav" data-v="report">Open the weekly report</button><button class="btn ghost" data-a="nav" data-v="assist">Run today\'s automation</button></div></div>';
+   +'<div class="btns"><button class="btn pri" data-a="nav" data-v="report">Open the weekly report</button><button class="btn ghost" data-a="nav" data-v="course">See the course</button></div></div>';
   if(S.tour){
     h+='<div class="card sm"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><h3>Start here (30 seconds)</h3>'
-     +'<ol style="margin:6px 0 0;padding-left:20px"><li>See who is active and who is quiet below.</li><li>Open <b>Weekly report</b> to see what to focus on in the live lesson.</li><li>Open <b>Assistants</b> and press <b>Run today\'s automation</b>.</li><li>Use the <b>demo day</b> arrows on the right to move through the week.</li><li>Press <b>Try the student side</b> in the menu, do a check-in, then come back: you appear on the board as a live row.</li></ol>'
-     +'<p class="mutebox" style="margin-top:8px">The class is sample data and the assistants follow simple rules. This is a working prototype of the workflow.</p></div>'
+     +'<ol style="margin:6px 0 0;padding-left:20px"><li>See who is active and who is quiet below.</li><li>Open <b>Weekly report</b> to see what to focus on in the live lesson.</li><li>Open <b>Assistants</b> to see the AI agents: one is live, the others are coming soon.</li><li>Use the <b>demo day</b> arrows on the right to move through the week.</li><li>Press <b>Try the student side</b> in the menu, do a check-in, then come back: you appear on the board as a live row.</li></ol>'
+     +'<p class="mutebox" style="margin-top:8px">The class is sample data. The AI feedback on a student\'s answer is live.</p></div>'
      +'<button class="btn sm" data-a="hidetour">Hide</button></div></div>';
   }
   h+='<div class="stats">'
@@ -520,8 +519,8 @@ function vDash(m){
    +'<div class="stat"><span>Tasks done this week</span><b>'+m.doneTotal+' / '+m.dueTotal+'</b><small>'+(m.due?'due so far':'week starts Monday')+'</small></div>'
    +'<div class="stat"><span>Quiet students</span><b>'+m.quiet.length+'</b><small>missed the last 2 task days</small></div>'
    +'<div class="stat"><span>Course week</span><b>'+CUR+' / 8</b><small>'+(hr==='task'?'Task '+S.day+' of 4 today':esc(dayRole(S.day)))+'</small></div></div>';
-  h+='<div class="card"><h2>Course progress</h2><p class="sub" style="margin-bottom:12px">Tasks completed out of '+TOTAL_TASKS+' in the 8-week course. By today the class should have done about '+Math.round(m.courseDue/m.rows.length)+'.</p>'
-   +'<div class="line" style="margin-bottom:14px"><span class="n">Whole class</span><div class="bar ok" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(m.courseDone/(m.rows.length*TOTAL_TASKS)*100)+'" aria-label="Class course progress"><i style="width:'+Math.round(m.courseDone/(m.rows.length*TOTAL_TASKS)*100)+'%"></i></div><span class="t">'+Math.round(m.courseDone/(m.rows.length*TOTAL_TASKS)*100)+'% of the course</span></div>'
+  h+='<div class="card"><h2>Course progress</h2><p class="sub" style="margin-bottom:12px">Tasks completed out of '+TOTAL_TASKS+' in the 8-week course. By today the class should have done about '+Math.round(m.courseDue/m.act.length)+'.</p>'
+   +'<div class="line" style="margin-bottom:14px"><span class="n">Whole class</span><div class="bar ok" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(m.courseDone/(m.act.length*TOTAL_TASKS)*100)+'" aria-label="Class course progress"><i style="width:'+Math.round(m.courseDone/(m.act.length*TOTAL_TASKS)*100)+'%"></i></div><span class="t">'+Math.round(m.courseDone/(m.act.length*TOTAL_TASKS)*100)+'% of the course</span></div>'
    +progressLines(m)+'</div>';
   // board
   h+='<div class="card"><h2>Today\'s board</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Today</th><th class="hm">Mood</th><th class="hm">Last active</th><th>This week</th></tr></thead><tbody>'
@@ -562,9 +561,28 @@ function vStudents(m){
   var h='<div class="page-h"><h1>Students</h1><p class="sub">Select a student to see their week in detail. You see learning data only, never a student\'s own screen.</p></div>';
   h+='<div class="card"><div class="scroll"><table><thead><tr><th>Student</th><th>Goal</th><th>Today</th><th>Time this week</th><th>Course</th></tr></thead><tbody>'
    +m.rows.map(function(r){var t=todayState(r);
-     return '<tr><td><button class="rowbtn" data-a="open" data-n="'+esc(r.st.name)+'">'+esc(r.st.name)+'</button>'+(r.quiet?' <span class="pill bad">Quiet</span>':'')+'</td><td>'+esc(r.st.goal)+'</td><td><span class="pill '+t.c+'">'+t.t+'</span></td><td>'+r.mins+' min</td><td>'+r.courseDone+' of '+TOTAL_TASKS+'</td></tr>';}).join('')
+     return '<tr><td><button class="rowbtn" data-a="open" data-n="'+esc(r.st.name)+'">'+esc(r.st.name)+'</button>'+(r.quiet?' <span class="pill bad">Quiet</span>':'')+(r.st.invited?'<br><span class="mutebox">Invite code '+esc(r.st.code)+'</span>':'')+'</td><td>'+esc(r.st.goal)+'</td><td><span class="pill '+t.c+'">'+t.t+'</span></td><td>'+r.mins+' min</td><td>'+r.courseDone+' of '+TOTAL_TASKS+'</td></tr>';}).join('')
    +'</tbody></table></div><p class="mutebox" style="margin-top:10px">Time on the platform and answers are sample data.</p></div>';
+  h+=addStudentCard();
   return h;
+}
+function inviteLink(code){return location.href.split('#')[0].split('?')[0]+'?join='+code;}
+function makeCode(){
+  var al='ABCDEFGHJKMNPQRSTUVWXYZ23456789',out='',i,a;
+  try{a=new Uint32Array(6);crypto.getRandomValues(a);for(i=0;i<6;i++)out+=al.charAt(a[i]%al.length);}
+  catch(e){for(i=0;i<6;i++)out+=al.charAt(Math.floor(Math.random()*al.length));}
+  return out;
+}
+function addStudentCard(){
+  var h='<div class="card"><h2>Add a student</h2><p class="sub" style="margin-bottom:10px">Add a learner to this class. Omniloop creates an invite code, so students always join through their teacher and nobody can choose to be a teacher.</p>'
+   +'<div class="grid2"><label>Name<br><input id="add-name" class="inp" maxlength="30" placeholder="For example: Nadia"></label><label>Goal (optional)<br><input id="add-goal" class="inp" maxlength="80" placeholder="For example: lead meetings in English"></label></div>'
+   +'<div class="btns" style="margin-top:10px"><button class="btn pri" data-a="addstudent">Add and create invite code</button></div>';
+  if(S.extra.length){
+    h+='<div class="stack" style="margin-top:14px">'+S.extra.map(function(x){
+      return '<div class="item"><b>'+esc(x.name)+'</b> <span class="pill acc">Invite code '+esc(x.code)+'</span><p class="mutebox" style="margin:4px 0 8px;word-break:break-all">'+esc(inviteLink(x.code))+'</p>'
+       +'<div class="btns"><button class="btn sm" data-a="copyinvite" data-n="'+esc(x.name)+'">Copy invite</button><button class="btn sm" data-a="rmstudent" data-n="'+esc(x.name)+'">Remove</button></div></div>';}).join('')+'</div>';
+  }
+  return h+'<p class="mutebox" style="margin-top:12px">Preview: the student is added to your board, but the invite link does not create a real account yet. In the full product, teacher accounts are verified separately, and students can only join with an invite.</p></div>';
 }
 function vStudent(r,m){
   var md=moodOf(r),t=todayState(r);
@@ -576,7 +594,7 @@ function vStudent(r,m){
   var any=false;
   r.acts.forEach(function(a){
     var task=TASKS[a.t-1];
-    if(a.kind==='-'){h+='<div class="item" style="margin-bottom:10px"><h3>'+DS[a.t]+': '+esc(task.title)+'</h3><span class="pill bad">No answer</span></div>';return;}
+    if(a.kind==='-'){if(r.st.invited)return;h+='<div class="item" style="margin-bottom:10px"><h3>'+DS[a.t]+': '+esc(task.title)+'</h3><span class="pill bad">No answer</span></div>';return;}
     any=true;h+=ans(a.t,a.kind,a.sent[0],a.sent[1],a.min,false,a.orig);
   });
   if(r.cu){any=true;h+=ans(r.cu.t,'f',r.cu.text,r.cu.tags,7,true);}
@@ -598,7 +616,7 @@ function reportText(m){
   var L=[];
   L.push('Live session brief: Week '+CUR+', '+COURSE.weeks[CUR-1].title);
   L.push(COURSE.title+' '+COURSE.level+' · '+sessionLabel());
-  L.push('Based on '+m.answers.length+' answers from '+m.rows.length+' students. Suggestions only; the teacher decides.');
+  L.push('Based on '+m.answers.length+' answers from '+m.act.length+' students. Suggestions only; the teacher decides.');
   L.push('');L.push('FOCUS ON');
   if(!m.focus.length)L.push('- Not enough answers yet.');
   m.focus.forEach(function(o){L.push('- '+TAGNAME[o.tag]+': seen in '+o.n+' answers ('+o.k+' '+plural(o.k,'student','students')+'). '+TIPS[o.tag]);});
@@ -623,7 +641,8 @@ function outline(m){
 }
 function vReport(m){
   var h='<div class="page-h"><h1>Weekly report</h1><p class="sub">Week '+CUR+': '+esc(COURSE.weeks[CUR-1].title)+'. '+(S.day>=5?'Ready for the live session.':'Preview, updated as answers come in.')+'</p></div>';
-  h+='<div class="note">Built only from the answers students gave, '+m.answers.length+' answers from '+m.rows.length+' students (Mon to '+DS[Math.min(S.day,4)]+'). These are suggestions: you decide what to teach. No "mastery" is claimed: B1 learners will keep making mistakes, so this only shows where to spend your time.</div>';
+  h+='<div class="note">Built only from the answers students gave, '+m.answers.length+' answers from '+m.act.length+' students (Mon to '+DS[Math.min(S.day,4)]+'). These are suggestions: you decide what to teach. No "mastery" is claimed: B1 learners will keep making mistakes, so this only shows where to spend your time.</div>';
+  h+=aiBriefCard(m);
   h+='<div class="card"><h2>Focus on in the live lesson</h2>';
   if(!m.focus.length)h+='<p class="sub">Not enough answers yet. A point appears here when it shows up in at least 2 answers.</p>';
   h+='<div class="stack">'+m.focus.map(function(o){
@@ -644,44 +663,78 @@ function vReport(m){
   var mins=m.answers.length*2+m.quiet.length*3+(m.answers.length?20:0);
   h+='<p style="font-size:26px;font-weight:700">about '+mins+' min</p><p class="mutebox">Assumes 2 min to read and correct each answer, 3 min per personal message and 20 min to build the lesson plan by hand. These numbers are assumptions, not measurements.</p></div></div>';
   h+='<div class="card"><h2>Suggested outline for the live session</h2><ol style="margin:0;padding-left:20px">'+outline(m).map(function(x){return '<li style="margin-bottom:6px">'+esc(x)+'</li>';}).join('')+'</ol>'
-   +'<div class="btns" style="margin-top:12px"><button class="btn pri" data-a="copyreport">Copy the brief</button></div></div>';
+   +'<div class="btns" style="margin-top:12px"><button class="btn pri" data-a="copyreport">Copy the brief</button><button class="btn" data-a="dlbrief">Download as a text file</button></div></div>';
   return h;
 }
-
-function runAuto(m){
-  var d=S.day,k=dayKind(d),list=[];
-  S.log=S.log.filter(function(l){return l.day!==d;});
-  if(S.auto.sender){
-    var txt;
-    if(k==='task'){var miss=m.rows.filter(function(r){return r.acts[d-1].kind==='-';}).length;txt='Sent Task '+d+' ("'+TASKS[d-1].title+'") to '+m.rows.length+' students. Reminded '+miss+' '+plural(miss,'student','students')+' who had not started.';}
-    else if(k==='rest')txt='No task sent: rest day.';
-    else if(k==='cheat')txt='Sent a catch-up note to students with missed tasks.';
-    else txt='Sent the live session reminder for '+S.session.time+'.';
-    list.push({day:d,who:'Task Sender',text:txt});
+function aiKey(m){return JSON.stringify([S.day,m.answers.map(function(a){return a.name+a.t+a.text;})]);}
+function aiBriefCard(m){
+  if(!AI_URL)return '';
+  var h='<div class="card"><h2>AI lesson brief <span class="pill acc">Summariser agent</span></h2>';
+  if(S.auto.summary===false)return h+'<p class="sub">The Summariser is switched off in Assistants. The rule-based brief is below.</p></div>';
+  var st=briefSt,fresh_=st.status==='done'&&st.key===aiKey(m);
+  if(st.status==='idle'||(st.status==='done'&&!fresh_)){
+    h+='<p class="sub">'+(st.status==='done'?'The answers changed since the last brief. ':'')+'The Summariser reads this week\'s answers and writes a brief. It only uses what students wrote, and every quote is checked.</p>'
+     +'<div class="btns" style="margin-top:10px"><button class="btn pri" data-a="aibrief"'+(m.answers.length<3?' disabled':'')+'>Write the brief with AI</button></div>'
+     +(m.answers.length<3?'<p class="mutebox" style="margin-top:6px">It needs at least 3 answers.</p>':'')
+     +'<p class="mutebox" style="margin-top:8px">Sample class data is sent to an AI service. Do not use real learner data on the free tier.</p>';
+  }else if(st.status==='loading'){
+    h+='<p class="sub">The Summariser is writing the brief...</p>';
+  }else if(st.status==='error'){
+    h+='<p class="sub">The AI could not write the brief just now. The rule-based brief below is built from the same answers.</p><div class="btns" style="margin-top:10px"><button class="btn" data-a="aibrief">Try again</button></div>';
+  }else{
+    var d=st.data;
+    h+='<p style="margin-bottom:10px">'+esc(d.summary)+'</p><h3 style="margin:6px 0">Focus on</h3><div class="stack">'
+     +d.focus.map(function(f){return '<div class="item focus"><h3>'+esc(f.title)+'</h3><p class="mutebox">'+esc(f.why)+'</p>'+f.evidence.map(function(e){return '<p class="quote">'+esc(e.name)+': "'+esc(e.quote)+'"</p>';}).join('')+'<p style="margin-top:6px"><b>Activity:</b> '+esc(f.activity)+'</p></div>';}).join('')+'</div>';
+    if(d.brief.length)h+='<h3 style="margin:14px 0 6px">Mention briefly</h3><div class="stack">'+d.brief.map(function(b){return '<div class="item brief"><h3>'+esc(b.title)+'</h3><span class="mutebox">'+esc(b.note)+'</span></div>';}).join('')+'</div>';
+    if(d.outline.length)h+='<h3 style="margin:14px 0 6px">Suggested outline</h3><ol style="margin:0;padding-left:20px">'+d.outline.map(function(o){return '<li style="margin-bottom:4px">'+esc(o)+'</li>';}).join('')+'</ol>';
+    if(d.personal.length)h+='<h3 style="margin:14px 0 6px">Personal word</h3>'+d.personal.map(function(p){return '<p><b>'+esc(p.name)+':</b> '+esc(p.note)+'</p>';}).join('');
+    h+='<p class="mutebox" style="margin-top:10px">Written by AI from the answers above. These are suggestions: you decide what to teach.</p>'
+     +'<div class="btns" style="margin-top:10px"><button class="btn pri" data-a="copyai">Copy the AI brief</button><button class="btn" data-a="dlbrief">Download as a text file</button><button class="btn" data-a="aibrief">Write again</button></div>';
   }
-  if(S.auto.feedback){
-    var n=k==='task'?m.rows.filter(function(r){return r.acts[d-1].kind!=='-';}).length:0;
-    list.push({day:d,who:'Feedback Giver',text:k==='task'?'Gave feedback on '+n+' '+plural(n,'answer','answers')+' (sample rules).':'No answers to review today.'});
-  }
-  if(S.auto.summary){
-    list.push({day:d,who:'Summariser',text:'Updated the weekly report from '+m.answers.length+' answers.'});
-  }
-  if(!list.length)list.push({day:d,who:'Omniloop',text:'All assistants are off. Nothing ran.'});
-  S.log=S.log.concat(list);save();
+  return h+'</div>';
 }
+function aiText(d,m){
+  var L=['AI lesson brief: Week '+CUR+', '+COURSE.weeks[CUR-1].title,COURSE.title+' '+COURSE.level+' · '+sessionLabel(),'Written by AI from '+m.answers.length+' answers. Suggestions only; the teacher decides.','',d.summary,'','FOCUS ON'];
+  d.focus.forEach(function(f){L.push('- '+f.title+': '+f.why);f.evidence.forEach(function(e){L.push('    '+e.name+': "'+e.quote+'"');});L.push('    Activity: '+f.activity);});
+  L.push('','MENTION BRIEFLY');d.brief.forEach(function(b){L.push('- '+b.title+': '+b.note);});
+  L.push('','SUGGESTED OUTLINE');d.outline.forEach(function(o){L.push('- '+o);});
+  L.push('','PERSONAL WORD');if(!d.personal.length)L.push('- Nobody.');d.personal.forEach(function(p){L.push('- '+p.name+': '+p.note);});
+  return L.join('\n');
+}
+function download(name,txt){
+  try{var b=new Blob([txt],{type:'text/plain'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},800);}
+  catch(e){copyText(txt,'Brief copied (download is not available here)');}
+}
+function requestBrief(m){
+  var quiet=m.quiet.map(function(r){return r.st.name;});
+  var payload=JSON.stringify({objective:COURSE.weeks[CUR-1].title+'. '+COURSE.weeks[CUR-1].obj,session:sessionLabel(),quiet:quiet,answers:m.answers.map(function(a){return {name:a.name,text:a.text,tags:a.tags};})});
+  function once(){
+    var ctl=typeof AbortController!=='undefined'?new AbortController():null,timer=setTimeout(function(){if(ctl)ctl.abort();},25000);
+    return fetch(AI_URL+'brief',{method:'POST',headers:{'Content-Type':'application/json'},body:payload,signal:ctl?ctl.signal:undefined})
+      .then(function(r){return r.json();})
+      .then(function(d){clearTimeout(timer);if(!d||!d.ok||!Array.isArray(d.focus)||!d.focus.length)throw new Error('bad');
+        var texts=m.answers;
+        d.focus=d.focus.map(function(f){f.evidence=(f.evidence||[]).filter(function(e){return texts.some(function(a){return a.name===e.name&&a.text.indexOf(e.quote)>=0;});});return f;}).filter(function(f){return f.evidence.length;});
+        if(!d.focus.length)throw new Error('no evidence');
+        d.brief=d.brief||[];d.outline=d.outline||[];d.personal=d.personal||[];
+        return d;})
+      .catch(function(e){clearTimeout(timer);throw e;});
+  }
+  return once().catch(function(){return once();});
+}
+
 function vAssist(m){
-  var defs=[['sender','Task Sender','Sends each day\'s task from the course and reminds students who have not started. Prepares a personal message when someone goes quiet.'],
-    ['feedback','Feedback Giver','Replies to each answer straight away with one thing done well and the most useful correction. Uses simple rules in this demo.'],
-    ['summary','Summariser','Collects the week\'s answers, moods and mistakes and writes the brief for the live session.']];
-  var h='<div class="page-h"><h1>Assistants</h1><p class="sub">You stay in control. Switch an assistant off and it stops working for the whole class.</p></div>';
-  h+='<div class="stack">'+defs.map(function(a){
-    return '<div class="card agent"><div class="ico">'+ico('cpu')+'</div><div class="grow"><h3>'+a[1]+'</h3><p class="sub">'+a[2]+'</p></div>'
-     +'<button class="switch'+(S.auto[a[0]]?' on':'')+'" data-a="toggle" data-k="'+a[0]+'" role="switch" aria-checked="'+(S.auto[a[0]]?'true':'false')+'" aria-label="'+a[1]+'"></button></div>';}).join('')+'</div>';
-  h+='<div class="card"><h2>Run today\'s automation</h2><p class="sub" style="margin-bottom:10px">Runs the assistants for the demo day ('+DN[S.day]+'). In the full product this happens by itself every day.</p>'
-   +'<button class="btn pri" data-a="run">Run today\'s automation</button>';
-  var today=S.log.filter(function(l){return l.day===S.day;});
-  h+='<div class="log" style="margin-top:14px">'+(today.length?today.map(function(l){return '<div><b>'+esc(l.who)+'</b><span>'+esc(l.text)+'</span></div>';}).join(''):'<span class="mutebox">Nothing has run for '+DN[S.day]+' yet.</span>')+'</div></div>';
-  h+='<div class="note">Honest note: the assistants in this demo follow simple rules on sample data. They do not send real messages. A live AI model and real WhatsApp sending are the planned next step.</div>';
+  var live=S.auto.feedback!==false;
+  var h='<div class="page-h"><h1>Assistants</h1><p class="sub">AI agents that take over the teacher\'s routine. You stay in control.</p></div>';
+  h+='<div class="card agent"><div class="ico">'+ico('cpu')+'</div><div class="grow"><h3>Feedback Giver <span class="pill '+(live?'ok':'')+'">'+(live?'Live':'Off')+'</span></h3><p class="sub">Reads each student\'s answer and replies straight away with one thing done well, up to two corrections and a suggested version. Powered by Google Gemini through a secure Cloudflare Worker.</p>'
+   +'<p class="mutebox" style="margin-top:6px">'+(live?'Students receive AI feedback.':'Switched off: students receive simple built-in feedback instead.')+'</p></div>'
+   +'<button class="switch'+(live?' on':'')+'" data-a="toggle" data-k="feedback" role="switch" aria-checked="'+(live?'true':'false')+'" aria-label="Feedback Giver"></button></div>';
+  var sm=S.auto.summary!==false;
+  h+='<div class="card agent"><div class="ico">'+ico('cpu')+'</div><div class="grow"><h3>Summariser <span class="pill '+(sm?'ok':'')+'">'+(sm?'Live':'Off')+'</span></h3><p class="sub">Reads the week\'s answers and writes the lesson brief: what to focus on, what to mention briefly, an outline and who needs a personal word. Every quote it uses is checked against the students\' real answers. Open the Weekly report and press "Write the brief with AI".</p>'
+   +'<p class="mutebox" style="margin-top:6px">'+(sm?'Available in the weekly report.':'Switched off: the weekly report still shows the rule-based brief.')+'</p></div>'
+   +'<button class="switch'+(sm?' on':'')+'" data-a="toggle" data-k="summary" role="switch" aria-checked="'+(sm?'true':'false')+'" aria-label="Summariser"></button></div>';
+  h+='<div class="card agent locked"><div class="ico">'+ico('cpu')+'</div><div class="grow"><h3>Task Sender <span class="pill">Coming soon</span></h3><p class="sub">Sends each day\'s task from the course and reminds learners who have not started, by email or Telegram.</p></div></div>';
+  h+='<div class="note">In the full product the teacher can start, stop and add agents. Here, the switch above really changes what students receive.</div>';
   return h;
 }
 function vLibrary(){
@@ -737,7 +790,7 @@ function review(text){
 
 function getFeedback(text,t,kind){
   var rules=review(text);
-  if(!AI_URL)return Promise.resolve(Object.assign({source:'rules'},rules));
+  if(!AI_URL||S.auto.feedback===false)return Promise.resolve(Object.assign({source:'rules'},rules));
   function once(){
     var ctl=typeof AbortController!=='undefined'?new AbortController():null;
     var timer=setTimeout(function(){if(ctl)ctl.abort();},12000);
@@ -754,6 +807,7 @@ function getFeedback(text,t,kind){
 function liveName(){return S.me.name&&S.me.name.trim()?S.me.name.trim():'You (live demo)';}
 function studentList(){
   var arr=STUDENTS.slice();
+  S.extra.forEach(function(x){arr.push({name:x.name,goal:x.goal||'New student',prior:0,p:'----',s:[null,null,null,null],invited:true,code:x.code});});
   if(Object.keys(S.live).length){
     var p='',s=[],o=[],mm=[],t,e;
     for(t=1;t<=4;t++){e=S.live[t];
@@ -781,7 +835,42 @@ function moodCard(t){
 }
 function videoCard(task){
   return '<div class="video"><div class="play" aria-hidden="true">&#9654;</div><div><b>Watch: '+esc(task.title)+' (about 2 min)</b><span>Sample video card. Real videos come in a later version, so the transcript is below.</span></div></div>'
-   +'<details class="tr"><summary>Read the transcript</summary><p>'+esc(task.tr)+'</p></details>';
+   +'<details class="tr"><summary>Read the transcript</summary><p>'+esc(task.tr)+'</p></details>'
+   +(canListen()?'<button class="btn sm" style="margin-top:8px" data-a="listen" data-w="tr">Listen to the transcript</button>':'');
+}
+function canListen(){return !!(window.speechSynthesis&&window.SpeechSynthesisUtterance);}
+function listen(txt){try{if(!canListen())return;window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(txt);u.lang='en-GB';u.rate=0.9;window.speechSynthesis.speak(u);}catch(e){}}
+function SR(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
+function stopVoice(){if(rec&&recOn){try{rec.stop();}catch(e){}}}
+function toggleVoice(){
+  var ta=document.getElementById('ans');
+  if(!ta||!SR())return;
+  if(recOn){stopVoice();return;}
+  var base=ta.value.trim();base=base?base+' ':'';
+  var finalT='';
+  rec=new (SR())();rec.lang='en-US';rec.interimResults=true;rec.continuous=true;
+  rec.onresult=function(e){
+    var interim='',i,r;
+    for(i=e.resultIndex;i<e.results.length;i++){r=e.results[i];if(r.isFinal)finalT+=r[0].transcript+' ';else interim+=r[0].transcript;}
+    var el=document.getElementById('ans');
+    if(el){el.value=(base+finalT+interim).replace(/\s+/g,' ').replace(/^\s+/,'');if(flow)flow.text=el.value;}
+  };
+  rec.onerror=function(e){
+    var m=document.getElementById('voicemsg');
+    if(m)m.textContent=(e.error==='not-allowed'||e.error==='service-not-allowed')?'Microphone access was blocked. Allow the microphone in your browser, or type your answer.':'Voice input stopped ('+e.error+'). You can type instead.';
+  };
+  rec.onend=function(){
+    recOn=false;
+    var b=document.getElementById('voicebtn'),m=document.getElementById('voicemsg');
+    if(b)b.textContent='Speak your answer';
+    if(m&&m.textContent.indexOf('Listening')===0)m.textContent='Check the text, fix anything, then get feedback. Speech does not add full stops.';
+  };
+  try{
+    rec.start();recOn=true;
+    var b=document.getElementById('voicebtn'),m=document.getElementById('voicemsg');
+    if(b)b.textContent='Stop listening';
+    if(m)m.textContent='Listening... speak in English.';
+  }catch(e){recOn=false;}
 }
 function vFlow(){
   var t=flow.t,task=TASKS[t-1],h;
@@ -799,6 +888,7 @@ function vFlow(){
      +'<p style="margin:14px 0 8px"><b>'+esc(short2?task.short:task.long)+'</b></p>'
      +'<label for="ans" class="sr">Your answer</label><textarea id="ans" class="draft" style="min-height:120px" placeholder="Write your answer here. One full sentence is the minimum, and you can write more.">'+esc(flow.text||'')+'</textarea>'
      +(flow.err?'<p style="color:var(--bad);margin-top:6px" role="alert">'+esc(flow.err)+'</p>':'')
+     +(SR()?'<div class="btns" style="margin-top:10px"><button class="btn" id="voicebtn" data-a="voice">Speak your answer</button></div><p class="mutebox" id="voicemsg" style="margin-top:6px">Optional. Your browser\'s speech service turns your voice into text, which you can edit.</p>':'<p class="mutebox" style="margin-top:8px">Voice answers work in Chrome and Edge. You can type your answer here.</p>')
      +'<div class="btns" style="margin-top:10px"><button class="btn pri" data-a="submit"'+(flow.busy?' disabled':'')+'>'+(flow.busy?'Checking your answer...':'Get feedback')+'</button></div>'+(AI_URL?'<p class="mutebox" style="margin-top:8px">An AI service writes the feedback. Please do not write personal details.</p>':'')+'</div>';
     return h;
   }
@@ -808,7 +898,7 @@ function vFlow(){
    +'<p style="margin:12px 0 4px" class="mutebox">Your answer</p><p class="quote" style="font-size:16px">"'+esc(flow.text)+'"</p>'
    +'<p style="margin-top:14px"><b>Well done:</b> '+esc(fb.good)+'</p>'
    +(fb.fixes.length?'<p style="margin-top:12px"><b>'+(fb.fixes.length===1?'One thing to fix':'Two things to fix')+':</b></p><div class="stack" style="margin-top:6px">'+fb.fixes.map(function(f){return '<div class="item"><span class="chip">'+esc(TAGNAME[f.tag])+'</span> '+esc(f.msg)+'</div>';}).join('')+'</div>':'<p style="margin-top:12px">No problems found in this answer.</p>')
-   +(fb.improved?'<p style="margin-top:12px"><b>A possible improved version:</b></p><p class="quote" style="font-size:16px">"'+esc(fb.improved)+'"</p>':'')
+   +(fb.improved?'<p style="margin-top:12px"><b>A possible improved version:</b></p><p class="quote" style="font-size:16px">"'+esc(fb.improved)+'"</p>'+(canListen()?'<button class="btn sm" data-a="listen" data-w="improved">Listen</button>':''):'')
    +'<p style="margin-top:12px"><b>Try this next:</b> '+esc(fb.follow||task.fu)+'</p>'
    +'<div class="btns" style="margin-top:14px"><button class="btn" data-a="revise" data-t="'+t+'">Revise my answer</button><button class="btn pri" data-a="finish">Done</button></div></div>';
 }
@@ -948,6 +1038,7 @@ document.addEventListener('click',function(e){
   else if(a==='begin'){flow.step='task';flow.start=Date.now();}
   else if(a==='submit'){
     if(flow.busy)return;
+    stopVoice();
     var el=document.getElementById('ans');flow.text=el?el.value:flow.text;
     if(flow.text.trim().split(/\s+/).filter(Boolean).length<3){flow.err='Write at least one full sentence (3 words or more).';render();return;}
     flow.err=null;flow.busy=true;render();
@@ -963,17 +1054,36 @@ document.addEventListener('click',function(e){
   else if(a==='revise'){var e0=S.live[d.t];flow={t:parseInt(d.t,10),mood:e0.mood,kind:e0.kind,step:'task',text:e0.text,start:Date.now()};}
   else if(a==='finish'){flow=null;}
   else if(a==='share'){S.me.share=!S.me.share;}
-  else if(a==='reset'){S=Object.assign(fresh(),{role:S.role,theme:S.theme,view:S.role==='student'?'today':'dash'});flow=null;}
+  else if(a==='reset'){S=Object.assign(fresh(),{role:S.role,theme:S.theme,view:S.role==='student'?'today':'dash'});flow=null;briefSt={status:'idle',data:null,key:''};}
   else if(a==='nav'){S.view=d.v;S.sel=null;}
   else if(a==='theme'){S.theme=d.t;}
   else if(a==='open'){S.view='students';S.sel=d.n||null;}
   else if(a==='hidetour'){S.tour=false;}
   else if(a==='day'){S.day=Math.max(0,Math.min(6,S.day+parseInt(d.d,10)));}
   else if(a==='toggle'){S.auto[d.k]=!S.auto[d.k];}
-  else if(a==='run'){runAuto(model());}
   else if(a==='contact'){S.contacted[d.n]=S.day;S.log=S.log.concat([{day:S.day,who:'You',text:'Marked the message to '+d.n+' as sent.'}]);}
   else if(a==='copydraft'){m=model();var r=m.rows.filter(function(x){return x.st.name===d.n;})[0];if(r){copyText(draftFor(r),'Message copied');}return;}
   else if(a==='copyreport'){copyText(reportText(model()),'Brief copied');return;}
+  else if(a==='copyai'){m=model();if(briefSt.status==='done')copyText(aiText(briefSt.data,m),'AI brief copied');return;}
+  else if(a==='dlbrief'){m=model();download('omniloop-lesson-brief.txt',(briefSt.status==='done'&&briefSt.key===aiKey(m))?aiText(briefSt.data,m):reportText(m));return;}
+  else if(a==='aibrief'){
+    if(briefSt.status==='loading')return;
+    m=model();var k0=aiKey(m);briefSt={status:'loading',data:null,key:k0};render();
+    requestBrief(m).then(function(d){briefSt={status:'done',data:d,key:k0};render();},function(){briefSt={status:'error',data:null,key:k0};render();});
+    return;
+  }
+  else if(a==='voice'){toggleVoice();return;}
+  else if(a==='listen'){var tk=flow?TASKS[flow.t-1]:null;if(d.w==='improved'&&flow&&flow.fb&&flow.fb.improved)listen(flow.fb.improved);else if(tk)listen(tk.tr);return;}
+  else if(a==='addstudent'){
+    var nm=(document.getElementById('add-name')||{}).value||'',gl=(document.getElementById('add-goal')||{}).value||'';
+    nm=nm.trim();
+    if(!nm){toast('Type the student\'s name first.');return;}
+    var dup=studentList().some(function(x){return x.name.toLowerCase()===nm.toLowerCase();});
+    if(dup){toast('That name is already in the class.');return;}
+    S.extra.push({name:nm,goal:gl.trim(),code:makeCode()});toast(nm+' added. Invite code created.');
+  }
+  else if(a==='copyinvite'){var ex=S.extra.filter(function(x){return x.name===d.n;})[0];if(ex)copyText('Join my Omniloop class: '+inviteLink(ex.code)+' (code '+ex.code+')','Invite copied');return;}
+  else if(a==='rmstudent'){S.extra=S.extra.filter(function(x){return x.name!==d.n;});}
   else return;
   save();render();
   if(a==='nav'||a==='open'||a==='enter'){window.scrollTo(0,0);}
