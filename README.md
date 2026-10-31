@@ -14,7 +14,7 @@ Learners keep asking their teacher for something to practise between live sessio
 - **Voice answers and Listen.** Students can speak an answer instead of typing (Chrome or Edge) and press Listen to hear a task or their improved version read aloud. Both use the browser's own speech features.
 - **Teacher dashboard.** Who is active, who has gone quiet (with a drafted personal message), course progress, a student detail page, and a weekly report: what to **focus on** in the live lesson and what to **mention briefly**, with evidence taken from the students' own answers.
 - **AI lesson brief (Summariser agent).** From the week's answers, a second AI agent writes a short brief for the live lesson: what to focus on, what to mention briefly, an outline and who needs a personal word. Every quote it shows is checked against the student's real answer, and anything not found word for word is dropped. The teacher can copy it or download it as a text file.
-- **Add a student.** The teacher adds a student by name and gets an invite code and link. This is a preview of invite-only joining: no real account is created.
+- **Add a student.** The teacher adds a student by name and gets an invite code and link. This previews joining by invitation: no real account is created.
 - **Assistants page.** The Feedback Giver and the Summariser are live AI agents, and the teacher can switch either off. The Task Sender agent is shown as coming soon.
 
 ## Run it locally
@@ -47,7 +47,7 @@ Google Gemini API  ->  structured feedback or brief (JSON)  ->  back to the page
 ## What is real and what is simulated
 - **Real:** the AI feedback on a student's answer, the AI lesson brief, voice answers and Listen (browser speech), the text-file download, the dashboard and the weekly report, computed from the answers in the page.
 - **Simulated:** the sample class (six generated students), their answers and time spent, and the drafted messages (nothing is sent to anyone). The weekly report numbers are computed with simple rules; only the lesson brief is written by AI. Invite codes are a preview and create no account.
-- **Not built yet:** accounts and logins, teacher verification and invite-only student sign-up, many teachers and classes, automatic reminders, the Task Sender agent, video tasks, subscriptions, the library and chats (shown as locked or coming soon).
+- **Not built yet:** accounts and logins, teacher verification, and learners joining by invitation or independent subscription, many teachers and classes, automatic reminders, the Task Sender agent, video tasks, subscriptions, the library and chats (shown as locked or coming soon).
 
 ## Tech stack
 - HTML, CSS and vanilla JavaScript in one page, hosted on GitHub Pages
@@ -67,4 +67,4 @@ Google Gemini API  ->  structured feedback or brief (JSON)  ->  back to the page
 - **Claude (AI assistant)**: wrote the code and the Worker under her direction, and helped draft the texts.
 
 ## What happens next
-A pilot with my own learners to measure the time saved; real accounts with teacher verification and invite-only student sign-up; automatic reminders by email and Telegram; the Task Sender agent; video tasks; teachers importing their own courses; a library of extra practice; teacher and student subscriptions.
+A pilot with my own learners to measure the time saved; real accounts with teacher verification, and learners joining by invitation or independent subscription; automatic reminders by email and Telegram; the Task Sender agent; video tasks; teachers importing their own courses; a library of extra practice; teacher and student subscriptions.
